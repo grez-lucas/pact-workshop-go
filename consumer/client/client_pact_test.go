@@ -4,11 +4,10 @@ package client
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strconv"
 	"testing"
-
-	"net/url"
 
 	"github.com/pact-foundation/pact-go/v2/consumer"
 	"github.com/pact-foundation/pact-go/v2/log"
@@ -17,28 +16,33 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var Like = matchers.Like
-var EachLike = matchers.EachLike
-var Term = matchers.Term
-var Regex = matchers.Regex
-var HexValue = matchers.HexValue
-var Identifier = matchers.Identifier
-var IPAddress = matchers.IPAddress
-var IPv6Address = matchers.IPv6Address
-var Timestamp = matchers.Timestamp
-var Date = matchers.Date
-var Time = matchers.Time
-var UUID = matchers.UUID
-var ArrayMinLike = matchers.ArrayMinLike
+var (
+	Like         = matchers.Like
+	EachLike     = matchers.EachLike
+	Term         = matchers.Term
+	Regex        = matchers.Regex
+	HexValue     = matchers.HexValue
+	Identifier   = matchers.Identifier
+	IPAddress    = matchers.IPAddress
+	IPv6Address  = matchers.IPv6Address
+	Timestamp    = matchers.Timestamp
+	Date         = matchers.Date
+	Time         = matchers.Time
+	UUID         = matchers.UUID
+	ArrayMinLike = matchers.ArrayMinLike
+)
 
-type S = matchers.S
-type Map = matchers.MapMatcher
+type (
+	S   = matchers.S
+	Map = matchers.MapMatcher
+)
 
-var u *url.URL
-var client *Client
+var (
+	u      *url.URL
+	client *Client
+)
 
 func TestClientPact_GetUser(t *testing.T) {
-
 	log.SetLogLevel("INFO")
 	mockProvider, err := consumer.NewV2Pact(consumer.MockHTTPProviderConfig{
 		Consumer: os.Getenv("CONSUMER_NAME"),
@@ -55,7 +59,7 @@ func TestClientPact_GetUser(t *testing.T) {
 			AddInteraction().
 			Given("User sally exists").
 			UponReceiving("A request to login with user 'sally'").
-			WithRequestPathMatcher("GET", Regex("/users/"+strconv.Itoa(id), "/users/[0-9]+")).
+			WithRequestPathMatcher("GET", Regex("/user/"+strconv.Itoa(id), "/user/[0-9]+")).
 			WillRespondWith(200, func(b *consumer.V2ResponseBuilder) {
 				b.BodyMatch(model.User{}).
 					Header("Content-Type", Term("application/json", `application\/json`)).
@@ -84,7 +88,5 @@ func TestClientPact_GetUser(t *testing.T) {
 			})
 
 		assert.NoError(t, err)
-
 	})
-
 }

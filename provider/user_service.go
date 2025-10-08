@@ -3,7 +3,6 @@ package provider
 import (
 	"encoding/json"
 	"net/http"
-
 	"strconv"
 	"strings"
 
@@ -14,7 +13,7 @@ import (
 
 var userRepository = &repository.UserRepository{
 	Users: map[string]*model.User{
-		"sally": &model.User{
+		"sally": {
 			FirstName: "Jean-Marie",
 			LastName:  "de La Beaujardière😀😍",
 			Username:  "sally",
@@ -66,7 +65,7 @@ func commonMiddleware(f http.HandlerFunc) http.HandlerFunc {
 func GetHTTPHandler() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/user/", commonMiddleware(GetUser))
-	mux.HandleFunc("/users/", commonMiddleware(GetUsers))
+	mux.HandleFunc("/users/:id", commonMiddleware(GetUsers))
 
 	return mux
 }

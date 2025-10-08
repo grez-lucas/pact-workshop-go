@@ -25,14 +25,20 @@ func (c *Client) GetUser(id int) (*model.User, error) {
 		return nil, err
 	}
 	var user model.User
-	_, err = c.do(req, &user)
+	res, err := c.do(req, &user)
+
+	if res != nil {
+		switch res.StatusCode {
+		case http.StatusNotFound:
+			return nil, ErrNotFound
+		}
+	}
 
 	if err != nil {
 		return nil, ErrUnavailable
 	}
 
 	return &user, err
-
 }
 
 // GetUsers gets all users from the API
@@ -86,4 +92,5 @@ func (c *Client) do(req *http.Request, v interface{}) (*http.Response, error) {
 
 var (
 	ErrUnavailable = errors.New("api unavailable")
+	ErrNotFound    = errors.New("not found")
 )

@@ -34,6 +34,7 @@ func TestPactProvider(t *testing.T) {
 		PactFiles:          []string{filepath.FromSlash(fmt.Sprintf("%s/GoAdminService-GoUserService.json", os.Getenv("PACT_DIR")))},
 		ProviderVersion:    os.Getenv("VERSION_COMMIT"),
 		StateHandlers:      stateHandlers,
+		RequestFilter:      fixBearerToken,
 	})
 	if err != nil {
 		t.Log(err)
@@ -55,6 +56,15 @@ func startInstrumentedProvider() {
 	l.Printf("API terminating: %v", http.Serve(ln, mux))
 }
 
+func fixBearerToken(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "" {
+			r.Header.Set("Authorization", getAuthToken())
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 var stateHandlers = models.StateHandlers{
 	"User sally exists": func(setup bool, s models.ProviderState) (models.ProviderStateResponse, error) {
 		userRepository = sallyExists
@@ -62,6 +72,10 @@ var stateHandlers = models.StateHandlers{
 	},
 	"User sally does not exist": func(setup bool, s models.ProviderState) (models.ProviderStateResponse, error) {
 		userRepository = sallyDoesNotExist
+		return models.ProviderStateResponse{}, nil
+	},
+	"User is not authenticated": func(setup bool, state models.ProviderState) (models.ProviderStateResponse, error) {
+		userRepository = sallyUnauthorized
 		return models.ProviderStateResponse{}, nil
 	},
 }

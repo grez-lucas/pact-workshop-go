@@ -57,7 +57,9 @@ func TestClientPact_GetUser(t *testing.T) {
 			AddInteraction().
 			Given("User sally exists").
 			UponReceiving("A request to login with user 'sally'").
-			WithRequestPathMatcher("GET", Regex("/user/"+strconv.Itoa(id), "/user/[0-9]+")).
+			WithRequestPathMatcher("GET", Regex("/user/"+strconv.Itoa(id), "/user/[0-9]+"), func(vrb *consumer.V2RequestBuilder) {
+				vrb.Header("Authorization", Like("Bearer 2019-01-01"))
+			}).
 			WillRespondWith(200, func(b *consumer.V2ResponseBuilder) {
 				b.BodyMatch(model.User{}).
 					Header("Content-Type", Term("application/json", `application\/json`)).
@@ -75,7 +77,7 @@ func TestClientPact_GetUser(t *testing.T) {
 				}
 
 				// // Execute the API client
-				user, err := client.GetUser(id)
+				user, err := client.WithToken("2019-01-01").GetUser(id)
 
 				// // Assert basic fact
 				if user.ID != id {
@@ -93,8 +95,13 @@ func TestClientPact_GetUser(t *testing.T) {
 		func(t *testing.T) {
 			id := 10
 
-			err = mockProvider.AddInteraction().Given("User sally does not exist").UponReceiving("A request to log in with user 'sally'").WithRequestPathMatcher("GET", Regex("/user/"+strconv.Itoa(id), "/user/[0-9]+")).WillRespondWith(404,
-				func(vrb *consumer.V2ResponseBuilder) {
+			err = mockProvider.AddInteraction().
+				Given("User sally does not exist").
+				UponReceiving("A request to log in with user 'sally'").
+				WithRequestPathMatcher("GET", Regex("/user/"+strconv.Itoa(id), "/user/[0-9]+"), func(vrb *consumer.V2RequestBuilder) {
+					vrb.Header("Authorization", Like("Bearer 2019-01-01"))
+				}).
+				WillRespondWith(404, func(vrb *consumer.V2ResponseBuilder) {
 					vrb.Header("Content-Type", Term("application/json", `application\/json`)).
 						Header("X-Api-Correlation-Id", Like("100"))
 				}).
@@ -109,8 +116,42 @@ func TestClientPact_GetUser(t *testing.T) {
 						BaseURL: u,
 					}
 
-					_, err := client.GetUser(id)
+					_, err := client.WithToken("2019-01-01").GetUser(id)
 					assert.Equal(t, ErrNotFound, err)
+					return nil
+				})
+
+			assert.NoError(t, err)
+		},
+	)
+
+	t.Run(
+		"the user is not authorized",
+		func(t *testing.T) {
+			id := 10
+
+			err = mockProvider.AddInteraction().
+				Given("User is not authorized").
+				UponReceiving("A request to log in with user 'sally' that isn't authorized").
+				WithRequestPathMatcher("GET", Regex("/user/"+strconv.Itoa(id), "/user/[0-9]+")).
+				WillRespondWith(403,
+					func(vrb *consumer.V2ResponseBuilder) {
+						vrb.Header("Content-Type", Term("application/json", `application\/json`)).
+							Header("X-Api-Correlation-Id", Like("100"))
+					}).
+				ExecuteTest(t, func(config consumer.MockServerConfig) error {
+					// Act: test our API client behaves correctly
+
+					// Get the pact mock server URL
+					u, _ = url.Parse("http://" + config.Host + ":" + strconv.Itoa(config.Port))
+
+					// Initialise the API client and point it at the Pact mock server
+					client = &Client{
+						BaseURL: u,
+					}
+
+					_, err := client.WithToken("").GetUser(id)
+					assert.Equal(t, ErrUnauthorized, err)
 					return nil
 				})
 

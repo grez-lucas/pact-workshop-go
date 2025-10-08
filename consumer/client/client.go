@@ -16,6 +16,12 @@ import (
 type Client struct {
 	BaseURL    *url.URL
 	httpClient *http.Client
+	Token      string
+}
+
+func (c *Client) WithToken(token string) *Client {
+	c.Token = token
+	return c
 }
 
 // GetUser gets a single user from the API
@@ -31,6 +37,8 @@ func (c *Client) GetUser(id int) (*model.User, error) {
 		switch res.StatusCode {
 		case http.StatusNotFound:
 			return nil, ErrNotFound
+		case http.StatusForbidden:
+			return nil, ErrUnauthorized
 		}
 	}
 
@@ -48,7 +56,13 @@ func (c *Client) GetUsers() ([]model.User, error) {
 		return nil, err
 	}
 	var users []model.User
-	_, err = c.do(req, &users)
+	res, err := c.do(req, &users)
+	if res != nil {
+		switch res.StatusCode {
+		case http.StatusForbidden:
+			return nil, ErrUnauthorized
+		}
+	}
 
 	return users, err
 }
@@ -71,6 +85,9 @@ func (c *Client) newRequest(method, path string, body interface{}) (*http.Reques
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
+	if c.Token != "" {
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.Token))
+	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "Admin Service")
 
@@ -91,6 +108,7 @@ func (c *Client) do(req *http.Request, v interface{}) (*http.Response, error) {
 }
 
 var (
-	ErrUnavailable = errors.New("api unavailable")
-	ErrNotFound    = errors.New("not found")
+	ErrUnavailable  = errors.New("api unavailable")
+	ErrNotFound     = errors.New("not found")
+	ErrUnauthorized = errors.New("unauthorized")
 )
